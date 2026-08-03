@@ -40,6 +40,14 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
     // iniciar el sistema aunque el build no haya podido ejecutar el seed.
     const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
     const configuredAdminPassword = process.env.ADMIN_PASSWORD;
+    if (configuredAdminEmail === email && configuredAdminPassword === password && user) {
+      const isAdmin = user.memberships.some((membership) => membership.role === Role.ADMIN);
+      if (isAdmin && !verifyPassword(password, user.passwordHash)) {
+        await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(password) } });
+        user = { ...user, passwordHash: hashPassword(password) };
+      }
+    }
+
     if (!user && configuredAdminEmail === email && configuredAdminPassword === password) {
       const organization = await prisma.organization.upsert({
         where: { slug: "spectrum-demo" },
