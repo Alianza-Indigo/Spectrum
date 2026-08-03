@@ -17,9 +17,9 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative isolate overflow-hidden border-b border-border/60">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_35%,rgb(var(--spx-violet)/.18),transparent_34%),radial-gradient(circle_at_58%_90%,rgb(var(--spx-cyan)/.08),transparent_28%)]" />
-        <div className="absolute right-[-3rem] top-20 -z-10 h-[29rem] w-[29rem] rounded-full border border-amber-300/20 bg-[url('/spectrum-seal-dark.jpg')] bg-cover bg-center opacity-[0.18] mix-blend-screen" />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-16 sm:pt-24 lg:grid-cols-[1.05fr_.95fr]">
-          <div>
+        <div className="absolute right-[5rem] top-24 -z-10 h-[24rem] w-[24rem] rounded-full border border-amber-300/20 bg-[url('/spectrum-seal-dark.jpg')] bg-cover bg-center opacity-[0.13] mix-blend-screen" />
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-20 pt-16 sm:pt-24 lg:grid-cols-2 lg:gap-8">
+          <div className="lg:pl-4">
           <Badge tone="indigo" className="mb-6">Agencia de inteligencia · operación lícita</Badge>
           <h1 className="max-w-3xl text-4xl font-semibold leading-[1.04] sm:text-6xl lg:text-7xl">
             <span className="spx-gradient-text">Inteligencia que convierte la incertidumbre en claridad.</span>
@@ -37,7 +37,7 @@ export default function HomePage() {
             </ButtonLink>
           </div>
           </div>
-          <div className="relative hidden min-h-[25rem] lg:block">
+          <div className="relative hidden min-h-[25rem] lg:block lg:pr-4">
             <div className="absolute inset-8 rounded-full border border-indigo/40 shadow-[0_0_90px_rgb(var(--spx-violet)/.2)]" />
             <div className="absolute inset-20 rounded-full border border-cyan/40" />
             <div className="absolute inset-[7.5rem] rounded-full border border-violet/60 bg-violet/10" />
