@@ -1074,6 +1074,30 @@ model DeletionRequest {
 }
 
 // ----------------------------------------------------------------------------
+// Almacenamiento de objetos privado
+// ----------------------------------------------------------------------------
+// Los bytes de evidencia e informes se guardan aquí cuando no hay un proveedor
+// S3 configurado (modo autocontenido). El acceso siempre pasa por una URL
+// firmada y expirable servida por un route handler autenticado; nunca es
+// público. Con STORAGE_PROVIDER=s3 el adaptador delega en el bucket externo y
+// esta tabla solo conserva metadatos.
+model StoredObject {
+  id             String   @id @default(uuid())
+  organizationId String
+  key            String   @unique
+  provider       String   @default("db") // db | s3
+  contentType    String
+  sizeBytes      Int
+  sha256         String
+  data           Bytes? // presente solo en modo db
+  createdByUser  String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@map("stored_objects")
+}
+
+// ----------------------------------------------------------------------------
 // Sitio público: solicitudes de evaluación
 // ----------------------------------------------------------------------------
 

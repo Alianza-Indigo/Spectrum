@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireSession } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { caseVisibility, type Role } from "@/lib/auth/rbac";
-import { FolderKanban, ListChecks, Inbox, FileBox } from "lucide-react";
+import { FolderKanban, ListChecks, Inbox, FileBox, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = { title: "Panel", robots: { index: false, follow: false } };
 
@@ -38,13 +39,11 @@ async function loadMetrics(organizationId: string | null): Promise<Metrics> {
   }
 }
 
-const roadmap = [
-  { phase: "Fase 2", modules: "Clientes, expedientes, permisos y tareas" },
-  { phase: "Fase 3", modules: "Fuentes, hallazgos, línea de tiempo y evidencia" },
-  { phase: "Fase 4", modules: "Informes, revisión, PDF y portal cliente" },
-  { phase: "Fase 5", modules: "IA asistida, búsqueda y análisis documental" },
-  { phase: "Fase 6", modules: "Auditoría, retención, métricas y operación" },
-  { phase: "Fase 7", modules: "Facturación, automatizaciones e integraciones" },
+const quickLinks = [
+  { href: "/consola/panel/expedientes", label: "Expedientes", detail: "Abrir, investigar y entregar" },
+  { href: "/consola/panel/clientes", label: "Clientes", detail: "Altas y contactos autorizados" },
+  { href: "/consola/panel/tareas", label: "Tareas", detail: "Pendientes por vencer" },
+  { href: "/consola/panel/auditoria", label: "Auditoría", detail: "Accesos y cambios" },
 ];
 
 export default async function PanelPage() {
@@ -88,19 +87,23 @@ export default async function PanelPage() {
       </div>
 
       <Card>
-        <CardTitle>Módulos de la plataforma</CardTitle>
-        <CardDescription>
-          Esta versión entrega la base (Fase 0–1): marca, seguridad, sitio público, solicitudes y
-          autenticación. Los siguientes módulos se habilitan según el roadmap por fases.
-        </CardDescription>
-        <ul className="mt-5 divide-y divide-border/60">
-          {roadmap.map((r) => (
-            <li key={r.phase} className="flex items-center justify-between py-3">
-              <span className="text-sm text-foreground">{r.modules}</span>
-              <Badge tone="neutral">{r.phase}</Badge>
-            </li>
+        <CardTitle>Accesos rápidos</CardTitle>
+        <CardDescription>Operación de extremo a extremo: expedientes, clientes, tareas y auditoría.</CardDescription>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {quickLinks.map((q) => (
+            <Link
+              key={q.href}
+              href={q.href}
+              className="flex items-center justify-between rounded-xl border border-border/60 bg-surface/40 px-4 py-3 transition-colors hover:border-cyan/40"
+            >
+              <span>
+                <span className="block text-sm font-medium text-foreground">{q.label}</span>
+                <span className="block text-xs text-muted">{q.detail}</span>
+              </span>
+              <ArrowRight className="h-4 w-4 text-muted" aria-hidden />
+            </Link>
           ))}
-        </ul>
+        </div>
       </Card>
     </div>
   );

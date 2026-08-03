@@ -5,8 +5,8 @@ import { Logo } from "@/components/site/logo";
 import { Badge } from "@/components/ui/badge";
 import { roleLabels, canAny, type Permission, type Role } from "@/lib/auth/rbac";
 import {
-  LayoutDashboard, FolderKanban, Users, ListChecks, FileBox,
-  FileText, ShieldCheck, Settings, LogOut,
+  LayoutDashboard, FolderKanban, Users, ListChecks,
+  ShieldCheck, Settings, LogOut,
 } from "lucide-react";
 
 type NavItem = {
@@ -19,13 +19,11 @@ type NavItem = {
 
 const items: NavItem[] = [
   { href: "/consola/panel", label: "Panel", icon: LayoutDashboard, available: true },
-  { href: "/consola/panel/expedientes", label: "Expedientes", icon: FolderKanban, permission: "case:read", available: false },
-  { href: "/consola/panel/clientes", label: "Clientes", icon: Users, permission: "client:read", available: false },
-  { href: "/consola/panel/tareas", label: "Tareas", icon: ListChecks, permission: "task:read", available: false },
-  { href: "/consola/panel/evidencia", label: "Evidencia", icon: FileBox, permission: "evidence:read", available: false },
-  { href: "/consola/panel/informes", label: "Informes", icon: FileText, permission: "report:write", available: false },
-  { href: "/consola/panel/auditoria", label: "Auditoría", icon: ShieldCheck, permission: "audit:read", available: false },
-  { href: "/consola/panel/administracion", label: "Administración", icon: Settings, permission: "org:manage", available: false },
+  { href: "/consola/panel/expedientes", label: "Expedientes", icon: FolderKanban, permission: "case:read_assigned", available: true },
+  { href: "/consola/panel/clientes", label: "Clientes", icon: Users, permission: "client:read", available: true },
+  { href: "/consola/panel/tareas", label: "Tareas", icon: ListChecks, permission: "task:read", available: true },
+  { href: "/consola/panel/auditoria", label: "Auditoría", icon: ShieldCheck, permission: "audit:read", available: true },
+  { href: "/consola/panel/administracion", label: "Administración", icon: Settings, permission: "org:manage", available: true },
 ];
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {

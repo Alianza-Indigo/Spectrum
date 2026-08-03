@@ -5,7 +5,10 @@
  * Nota: los usuarios se crean sin contraseña real; en producción el alta de
  * usuarios pasa por el flujo de invitación/credenciales del administrador.
  */
-import { PrismaClient, Role, ClientType, CaseType, CaseStatus, TaskStatus, TaskPriority } from "@prisma/client";
+import {
+  PrismaClient, Role, ClientType, CaseType, CaseStatus, TaskStatus, TaskPriority,
+  SourceType, Reliability, ConfidenceLevel, TimelineKind,
+} from "@prisma/client";
 import { generateFolio } from "../src/lib/folio";
 import { hashPassword } from "../src/lib/auth/password";
 
@@ -63,6 +66,25 @@ async function main() {
     update: {},
     create: { organizationId: org.id, userId: investigator.id, role: Role.INVESTIGATOR },
   });
+
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@spectrum.demo" },
+    update: { passwordHash },
+    create: { email: "admin@spectrum.demo", name: "Administración", organizationId: org.id, isActive: true, passwordHash },
+  });
+  await prisma.organizationMember.upsert({
+    where: { organizationId_userId_role: { organizationId: org.id, userId: admin.id, role: Role.ADMIN } },
+    update: {},
+    create: { organizationId: org.id, userId: admin.id, role: Role.ADMIN },
+  });
+
+  // Datos de demostración del expediente (idempotente: solo si aún no existe).
+  const existingCase = await prisma.case.findFirst({ where: { organizationId: org.id } });
+  if (existingCase) {
+    console.log("Seed: datos demo ya presentes; se omite la recreación.");
+    console.log(`Usuarios demo: director@ / investigador@ / admin@spectrum.demo (contraseña: ${DEMO_PASSWORD})`);
+    return;
+  }
 
   const client = await prisma.client.create({
     data: {
@@ -129,6 +151,88 @@ async function main() {
     },
   });
 
+  // Autorización, viabilidad y plan
+  await prisma.caseAuthorization.create({
+    data: {
+      caseId: investigation.id,
+      kind: "consentimiento",
+      description: "Consentimiento del cliente para investigar al proveedor con información lícita.",
+      grantedBy: "Dirección Jurídica del cliente",
+      recordedByUser: director.id,
+    },
+  });
+  await prisma.viabilityReview.create({
+    data: {
+      caseId: investigation.id,
+      requestedObjective: "Confirmar existencia legal y riesgos reputacionales del proveedor.",
+      legitimateBasis: "Relación comercial vigente y consentimiento del cliente.",
+      plannedSources: "Registros públicos y fuentes abiertas.",
+      decision: "ACCEPT",
+      decisionReason: "Objetivo lícito, con base legítima y métodos permitidos.",
+      decidedByUser: director.id,
+    },
+  });
+  const plan = await prisma.investigationPlan.create({
+    data: {
+      caseId: investigation.id,
+      version: 1,
+      allowedMethods: "Consulta de registros públicos, fuentes abiertas y documentación del cliente.",
+      prohibitedMethods: "Vigilancia, intrusión, interceptación, suplantación.",
+      authorizedSources: "Registro público de comercio, sitios oficiales.",
+      sufficiencyCriteria: "Al menos dos fuentes concordantes por hecho clave.",
+      createdByUser: director.id,
+    },
+  });
+  await prisma.investigationQuestion.create({
+    data: { planId: plan.id, question: "¿El proveedor está legalmente constituido y vigente?", isHypothesis: false },
+  });
+
+  // Fuente + hallazgo (respeta la invariante hecho↔fuente)
+  const source = await prisma.source.create({
+    data: {
+      organizationId: org.id,
+      caseId: investigation.id,
+      type: SourceType.PUBLIC_RECORD,
+      origin: "Registro Público de Comercio (consulta en línea)",
+      method: "Consulta pública",
+      responsible: "Investigador de Campo",
+      reliability: Reliability.HIGH,
+      reference: "Folio mercantil de ejemplo",
+    },
+  });
+  await prisma.finding.create({
+    data: {
+      organizationId: org.id,
+      caseId: investigation.id,
+      observedFact: "El proveedor aparece constituido y vigente según el registro público consultado.",
+      sourceId: source.id,
+      confidence: ConfidenceLevel.HIGH,
+      interpretation: "Compatible con una empresa legalmente establecida.",
+      createdByUser: investigator.id,
+    },
+  });
+  await prisma.timelineEvent.create({
+    data: {
+      organizationId: org.id,
+      caseId: investigation.id,
+      title: "Constitución de la empresa proveedora (según registro público)",
+      occurredAt: new Date("2018-05-14"),
+      kind: TimelineKind.FACT,
+    },
+  });
+  await prisma.activity.create({
+    data: {
+      organizationId: org.id,
+      caseId: investigation.id,
+      authorUserId: investigator.id,
+      kind: "consulta",
+      content: "Se consultó el registro público de comercio y se archivó la constancia.",
+    },
+  });
+  await prisma.budget.create({
+    data: { organizationId: org.id, caseId: investigation.id, amount: "45000.00", currency: "MXN", paymentStatus: "PARTIAL" },
+  });
+
   await prisma.inquiry.create({
     data: {
       name: "Solicitante de Ejemplo",
@@ -145,7 +249,7 @@ async function main() {
   });
 
   console.log("Seed completado:", { org: org.slug, caso: investigation.folio });
-  console.log(`Usuarios demo: director@spectrum.demo / investigador@spectrum.demo (contraseña: ${DEMO_PASSWORD})`);
+  console.log(`Usuarios demo: director@ / investigador@ / admin@spectrum.demo (contraseña: ${DEMO_PASSWORD})`);
 }
 
 main()

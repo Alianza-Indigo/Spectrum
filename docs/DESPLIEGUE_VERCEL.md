@@ -56,20 +56,26 @@ npm run db:seed
 
 ## 5. Jobs programados (Vercel Cron)
 
-Cuando se implementen los endpoints `/api/jobs/*` (fases 5–7), decláralos en
-`vercel.json`, por ejemplo:
+Los endpoints `/api/jobs/*` están implementados (idempotentes y protegidos con
+`CRON_SECRET`). Declara su calendario en `vercel.json`:
 
 ```json
 {
   "crons": [
     { "path": "/api/jobs/hash-uploaded-evidence", "schedule": "*/5 * * * *" },
+    { "path": "/api/jobs/process-ai-jobs", "schedule": "*/5 * * * *" },
+    { "path": "/api/jobs/release-stuck-jobs", "schedule": "*/15 * * * *" },
     { "path": "/api/jobs/expire-delivery-links", "schedule": "0 * * * *" },
-    { "path": "/api/jobs/retention-review", "schedule": "0 3 * * *" }
+    { "path": "/api/jobs/send-notifications", "schedule": "0 * * * *" },
+    { "path": "/api/jobs/retention-review", "schedule": "0 3 * * *" },
+    { "path": "/api/jobs/generate-report-pdf", "schedule": "0 3 * * *" },
+    { "path": "/api/jobs/backup-audit-export", "schedule": "0 4 * * *" }
   ]
 }
 ```
 
-Cada endpoint debe validar la cabecera con `CRON_SECRET` y ser idempotente.
+Vercel Cron envía automáticamente `Authorization: Bearer $CRON_SECRET`; los jobs
+también aceptan `?secret=` para pruebas manuales.
 
 ## 6. Verificación post-despliegue
 

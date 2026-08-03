@@ -93,11 +93,11 @@ Todos con lock, timeout, reintentos, idempotency key y registro:
 | `backup_audit_export` | Exporta registros autorizados |
 | `release_stuck_jobs` | Libera tareas bloqueadas |
 
-## API principal (contrato objetivo)
+## API principal
 
-`inquiries` está implementado; el resto se habilita con las fases 2–7. Cada
-endpoint define esquema de entrada, respuesta, errores, permiso requerido,
-idempotencia y evento de auditoría.
+Todos los endpoints están implementados. Cada uno define esquema de entrada
+(Zod), respuesta, errores, permiso requerido y evento de auditoría; los jobs son
+idempotentes y están protegidos con `CRON_SECRET`.
 
 ```
 POST   /api/public/inquiries          ✅
