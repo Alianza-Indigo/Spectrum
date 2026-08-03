@@ -26,7 +26,9 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
-    next: formData.get("next"),
+    // FormData devuelve null cuando el campo oculto no existe; Zod espera
+    // undefined para que el campo opcional sea válido.
+    next: formData.get("next") ?? undefined,
   });
   if (!parsed.success) return { error: "Credenciales no válidas." };
 
