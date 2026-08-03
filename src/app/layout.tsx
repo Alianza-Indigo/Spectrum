@@ -10,9 +10,6 @@ export const metadata: Metadata = {
   description: site.description,
   applicationName: site.fullName,
   robots: { index: true, follow: true },
-  icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-  },
 };
 
 export const viewport: Viewport = {
