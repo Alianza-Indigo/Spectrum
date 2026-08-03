@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Role as PrismaRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { signSession, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth/session";
@@ -41,7 +41,7 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
     const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
     const configuredAdminPassword = process.env.ADMIN_PASSWORD;
     if (configuredAdminEmail === email && configuredAdminPassword === password && user) {
-      const isAdmin = user.memberships.some((membership) => membership.role === Role.ADMIN);
+      const isAdmin = user.memberships.some((membership) => membership.role === PrismaRole.ADMIN);
       if (isAdmin && !verifyPassword(password, user.passwordHash)) {
         await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(password) } });
         user = { ...user, passwordHash: hashPassword(password) };
@@ -69,7 +69,7 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
         },
       });
       await prisma.organizationMember.create({
-        data: { organizationId: organization.id, userId: created.id, role: Role.ADMIN },
+        data: { organizationId: organization.id, userId: created.id, role: PrismaRole.ADMIN },
       });
       user = await prisma.user.findUnique({
         where: { id: created.id },
