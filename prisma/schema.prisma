@@ -1,0 +1,1105 @@
+// =============================================================================
+// SPECTRUM Agencia de Inteligencia — modelo de datos
+// PostgreSQL + Prisma. Multi-tenant con aislamiento por organización.
+//
+// Principios reflejados en el esquema:
+//  - Toda entidad operativa referencia `organizationId` (aislamiento obligatorio).
+//  - Identificadores UUID, timestamps UTC (createdAt / updatedAt).
+//  - Evidencia y actividades son inmutables en lo esencial: las correcciones
+//    crean nuevas filas relacionadas, no reescriben el histórico.
+//  - Toda acción sensible se registra en `AuditLog`.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enumeraciones
+// ----------------------------------------------------------------------------
+
+enum Role {
+  DIRECTOR
+  INVESTIGATOR
+  ANALYST
+  QUALITY_REVIEWER
+  ADMIN
+  CLIENT
+  EXTERNAL_AUDITOR
+}
+
+enum MemberStatus {
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum ClientType {
+  PERSON
+  COMPANY
+}
+
+enum ClientRelationStatus {
+  PROSPECT
+  ACTIVE
+  PAUSED
+  CLOSED
+  RESTRICTED
+}
+
+enum CaseType {
+  CORPORATE
+  DUE_DILIGENCE
+  BACKGROUND_CHECK
+  ASSET_INVESTIGATION
+  PERSON_LOCATION
+  FRAUD_INTERNAL
+  COMPETITIVE_INTELLIGENCE
+  DOCUMENT_ANALYSIS
+  REPUTATIONAL_RISK
+  LEGAL_SUPPORT
+  OTHER
+}
+
+enum CaseStatus {
+  SOLICITUD_RECIBIDA
+  EN_EVALUACION
+  RECHAZADO
+  CONFLICTO_DETECTADO
+  PENDIENTE_AUTORIZACION
+  CONTRATADO
+  ABIERTO
+  EN_INVESTIGACION
+  EN_REVISION
+  PENDIENTE_CLIENTE
+  INFORME_LISTO
+  ENTREGADO
+  PAUSADO
+  CERRADO
+  RETENIDO
+  ELIMINADO
+}
+
+enum ConfidentialityLevel {
+  STANDARD
+  SENSITIVE
+  RESTRICTED
+  CRITICAL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ViabilityDecision {
+  ACCEPT
+  REJECT
+  REQUEST_CLARIFICATION
+  ESCALATE
+}
+
+enum TaskStatus {
+  PENDIENTE
+  ASIGNADA
+  EN_PROGRESO
+  BLOQUEADA
+  COMPLETADA
+  CANCELADA
+  EN_REVISION
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SourceType {
+  CLIENT_DOCUMENT
+  AUTHORIZED_INTERVIEW
+  PUBLIC_RECORD
+  PUBLIC_WEBSITE
+  AUTHORIZED_COMMUNICATION
+  LAWFUL_OBSERVATION
+  INSTITUTIONAL
+  CONFIDENTIAL
+  PENDING_VERIFICATION
+}
+
+enum Reliability {
+  UNKNOWN
+  LOW
+  MEDIUM
+  HIGH
+  VERIFIED
+}
+
+enum ConfidenceLevel {
+  SPECULATIVE
+  LOW
+  MODERATE
+  HIGH
+  CORROBORATED
+}
+
+enum ReviewStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
+enum EvidenceType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  EXPORTED_EMAIL
+  SCREENSHOT
+  RECORD
+  NOTE
+  ARCHIVED_LINK
+  OTHER
+}
+
+enum EvidenceStatus {
+  RECEIVED
+  VERIFIED
+  QUESTIONED
+  EXCLUDED
+  ANNEXED
+}
+
+enum EvidenceEventType {
+  UPLOADED
+  ACCESSED
+  DOWNLOADED
+  TRANSFERRED
+  STATUS_CHANGED
+  DERIVED_COPY_CREATED
+  EXCLUDED
+  ANNEXED
+}
+
+enum TimelinePrecision {
+  EXACT
+  APPROXIMATE
+  UNKNOWN
+}
+
+enum TimelineKind {
+  FACT
+  STATEMENT
+  INFERENCE
+}
+
+enum EntityKind {
+  PERSON
+  ORGANIZATION
+  LOCATION
+  DOCUMENT
+  EVENT
+}
+
+enum AiReviewStatus {
+  PENDING_HUMAN_REVIEW
+  REVIEWED
+  ACCEPTED
+  REJECTED
+}
+
+enum ReportType {
+  EXECUTIVE
+  DUE_DILIGENCE
+  CORPORATE
+  DOCUMENT_INVESTIGATION
+  LOCATION
+  FINDINGS
+  WITH_ANNEXES
+}
+
+enum DeliveryStatus {
+  PREPARED
+  SENT
+  VIEWED
+  DOWNLOADED
+  ACKNOWLEDGED
+  REVOKED
+  EXPIRED
+}
+
+enum InquiryUrgency {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum InquiryStatus {
+  RECEIVED
+  IN_TRIAGE
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  DECLINED
+  ARCHIVED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum RetentionAction {
+  RETAIN
+  REVIEW
+  ANONYMIZE
+  DELETE
+}
+
+// ----------------------------------------------------------------------------
+// Organización, usuarios y membresías
+// ----------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  legalName String?
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members          OrganizationMember[]
+  clients          Client[]
+  cases            Case[]
+  users            User[]
+  templates        Template[]
+  retentionPolicy  RetentionPolicy[]
+  auditLogs        AuditLog[]
+  inquiries        Inquiry[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  organizationId String?
+  email          String    @unique
+  name           String
+  passwordHash   String?
+  mfaEnabled     Boolean   @default(false)
+  mfaSecret      String?
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization?        @relation(fields: [organizationId], references: [id])
+  memberships  OrganizationMember[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  role           Role
+  status         MemberStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId, role])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+// ----------------------------------------------------------------------------
+// Clientes
+// ----------------------------------------------------------------------------
+
+model Client {
+  id             String               @id @default(uuid())
+  organizationId String
+  type           ClientType
+  displayName    String
+  legalName      String?
+  taxId          String?
+  status         ClientRelationStatus @default(PROSPECT)
+  tags           String[]             @default([])
+  notes          String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  contacts     ClientContact[]
+  cases        Case[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@map("clients")
+}
+
+model ClientContact {
+  id           String   @id @default(uuid())
+  clientId     String
+  name         String
+  role         String?
+  email        String?
+  phone        String?
+  isAuthorized Boolean  @default(false) // representante autorizado
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@map("client_contacts")
+}
+
+// ----------------------------------------------------------------------------
+// Expedientes (cases)
+// ----------------------------------------------------------------------------
+
+model Case {
+  id                  String               @id @default(uuid())
+  organizationId      String
+  folio               String               @unique // legible, único y no predecible
+  internalName        String
+  clientId            String?
+  type                CaseType
+  description         String?
+  objective           String?
+  scope               String?
+  exclusions          String?
+  jurisdiction        String?
+  confidentiality     ConfidentialityLevel @default(SENSITIVE)
+  operationalRisk     RiskLevel            @default(MEDIUM)
+  legalRisk           RiskLevel            @default(MEDIUM)
+  status              CaseStatus           @default(SOLICITUD_RECIBIDA)
+  leadUserId          String?
+  budgetAmount        Decimal?             @db.Decimal(14, 2)
+  budgetCurrency      String               @default("USD")
+  authorizedHours     Decimal?             @db.Decimal(8, 2)
+  openedAt            DateTime?
+  dueAt               DateTime?
+  closedAt            DateTime?
+  retentionPolicyId   String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  client           Client?            @relation(fields: [clientId], references: [id])
+  retentionPolicy  RetentionPolicy?   @relation(fields: [retentionPolicyId], references: [id])
+  assignments      CaseAssignment[]
+  authorizations   CaseAuthorization[]
+  viabilityReviews ViabilityReview[]
+  plans            InvestigationPlan[]
+  tasks            Task[]
+  activities       Activity[]
+  sources          Source[]
+  findings         Finding[]
+  evidence         EvidenceItem[]
+  timeline         TimelineEvent[]
+  entities         Entity[]
+  relationships    Relationship[]
+  aiRuns           AiRun[]
+  reports          Report[]
+  messages         Message[]
+  rfis             RequestForInformation[]
+  budgets          Budget[]
+  timeEntries      TimeEntry[]
+  expenses         Expense[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([clientId])
+  @@map("cases")
+}
+
+model CaseAssignment {
+  id        String   @id @default(uuid())
+  caseId    String
+  userId    String
+  role      Role
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@unique([caseId, userId, role])
+  @@index([userId])
+  @@map("case_assignments")
+}
+
+model CaseAuthorization {
+  id             String    @id @default(uuid())
+  caseId         String
+  kind           String // consentimiento, contrato, poder, base legítima
+  description    String
+  grantedBy      String? // quién autoriza (contacto/representante)
+  documentUrl    String?
+  validFrom      DateTime?
+  validUntil     DateTime?
+  recordedByUser String?
+  createdAt      DateTime  @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@map("case_authorizations")
+}
+
+model ViabilityReview {
+  id                 String            @id @default(uuid())
+  caseId             String
+  requestedObjective String
+  legitimateBasis    String?
+  risksToThirdParties String?
+  conflictsOfInterest String?
+  jurisdiction       String?
+  plannedSources     String?
+  prohibitedSources  String?
+  sensitivityLevel   ConfidentialityLevel @default(SENSITIVE)
+  requiresLegalAdvice Boolean          @default(false)
+  decision           ViabilityDecision
+  decisionReason     String?
+  decidedByUser      String?
+  decidedAt          DateTime          @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@map("viability_reviews")
+}
+
+// ----------------------------------------------------------------------------
+// Plan de investigación
+// ----------------------------------------------------------------------------
+
+model InvestigationPlan {
+  id                String   @id @default(uuid())
+  caseId            String
+  version           Int      @default(1)
+  scope             String?
+  limits            String?
+  authorizedSources String?
+  allowedMethods    String?
+  prohibitedMethods String?
+  sufficiencyCriteria String?
+  risksAndControls  String?
+  createdByUser     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  case      Case                    @relation(fields: [caseId], references: [id])
+  questions InvestigationQuestion[]
+
+  @@index([caseId])
+  @@map("investigation_plans")
+}
+
+model InvestigationQuestion {
+  id           String   @id @default(uuid())
+  planId       String
+  question     String
+  isHypothesis Boolean  @default(false) // hipótesis etiquetada explícitamente
+  status       String   @default("open")
+  createdAt    DateTime @default(now())
+
+  plan InvestigationPlan @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+  @@map("investigation_questions")
+}
+
+// ----------------------------------------------------------------------------
+// Tareas y actividades
+// ----------------------------------------------------------------------------
+
+model Task {
+  id               String       @id @default(uuid())
+  organizationId   String
+  caseId           String
+  title            String
+  description      String?
+  assigneeUserId   String?
+  priority         TaskPriority @default(MEDIUM)
+  status           TaskStatus   @default(PENDIENTE)
+  dueAt            DateTime?
+  authorizedMethod String?
+  expectedEvidence String?
+  requiresReview   Boolean      @default(false)
+  internalNote     String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  case        Case         @relation(fields: [caseId], references: [id])
+  activities  Activity[]
+  timeEntries TimeEntry[]
+
+  @@index([caseId])
+  @@index([organizationId, status])
+  @@index([assigneeUserId])
+  @@map("tasks")
+}
+
+// Registro cronológico inmutable en lo esencial: las correcciones se agregan
+// como nuevas entradas, nunca sobrescriben una anterior.
+model Activity {
+  id             String   @id @default(uuid())
+  organizationId String
+  caseId         String
+  taskId         String?
+  authorUserId   String?
+  kind           String // nota, llamada, consulta, hallazgo, correccion
+  content        String
+  correctsId     String? // referencia a la actividad corregida
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  case Case  @relation(fields: [caseId], references: [id])
+  task Task? @relation(fields: [taskId], references: [id])
+
+  @@index([caseId])
+  @@index([caseId, occurredAt])
+  @@map("activities")
+}
+
+// ----------------------------------------------------------------------------
+// Entidades (personas, empresas, lugares) y relaciones
+// ----------------------------------------------------------------------------
+
+model Entity {
+  id             String     @id @default(uuid())
+  organizationId String
+  caseId         String
+  kind           EntityKind
+  displayName    String
+  attributes     Json       @default("{}")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  case          Case           @relation(fields: [caseId], references: [id])
+  relationsFrom Relationship[] @relation("RelFrom")
+  relationsTo   Relationship[] @relation("RelTo")
+
+  @@index([caseId])
+  @@index([caseId, kind])
+  @@map("entities")
+}
+
+model Relationship {
+  id             String   @id @default(uuid())
+  organizationId String
+  caseId         String
+  fromEntityId   String
+  toEntityId     String
+  label          String
+  kind           TimelineKind @default(INFERENCE) // hecho / declaración / inferencia
+  confidence     ConfidenceLevel @default(MODERATE)
+  createdAt      DateTime @default(now())
+
+  case       Case   @relation(fields: [caseId], references: [id])
+  fromEntity Entity @relation("RelFrom", fields: [fromEntityId], references: [id])
+  toEntity   Entity @relation("RelTo", fields: [toEntityId], references: [id])
+
+  @@index([caseId])
+  @@map("relationships")
+}
+
+// ----------------------------------------------------------------------------
+// Fuentes y hallazgos
+// ----------------------------------------------------------------------------
+
+model Source {
+  id             String      @id @default(uuid())
+  organizationId String
+  caseId         String
+  type           SourceType
+  origin         String
+  method         String?
+  consultedAt    DateTime?
+  responsible    String?
+  reliability    Reliability @default(UNKNOWN)
+  restrictions   String?
+  reference      String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  case     Case      @relation(fields: [caseId], references: [id])
+  findings Finding[]
+
+  @@index([caseId])
+  @@map("sources")
+}
+
+// La plataforma no permite registrar una conclusión como hecho sin al menos
+// una fuente o evidencia asociada (validado en la capa de aplicación).
+model Finding {
+  id             String          @id @default(uuid())
+  organizationId String
+  caseId         String
+  observedFact   String
+  sourceId       String?
+  evidenceId     String?
+  factDate       DateTime?
+  confidence     ConfidenceLevel @default(MODERATE)
+  interpretation String?
+  alternatives   String?
+  errorRisk      String?
+  reviewStatus   ReviewStatus    @default(DRAFT)
+  createdByUser  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  case     Case          @relation(fields: [caseId], references: [id])
+  source   Source?       @relation(fields: [sourceId], references: [id])
+  evidence EvidenceItem? @relation(fields: [evidenceId], references: [id])
+
+  @@index([caseId])
+  @@map("findings")
+}
+
+// ----------------------------------------------------------------------------
+// Evidencia y cadena de custodia
+// ----------------------------------------------------------------------------
+
+model EvidenceItem {
+  id                 String               @id @default(uuid())
+  organizationId     String
+  caseId             String
+  type               EvidenceType
+  internalName       String
+  originalName       String
+  mimeType           String?
+  sizeBytes          BigInt?
+  sha256             String? // calculado por job hash_uploaded_evidence
+  storageKey         String? // clave en almacenamiento privado
+  sourceOrigin       String?
+  obtainedAt         DateTime?
+  description        String?
+  confidentiality    ConfidentialityLevel @default(SENSITIVE)
+  status             EvidenceStatus       @default(RECEIVED)
+  derivedFromId      String? // copias derivadas del original
+  uploadedByUser     String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  case          Case            @relation(fields: [caseId], references: [id])
+  derivedFrom   EvidenceItem?   @relation("EvidenceDerivation", fields: [derivedFromId], references: [id])
+  derivatives   EvidenceItem[]  @relation("EvidenceDerivation")
+  events        EvidenceEvent[]
+  findings      Finding[]
+
+  @@index([caseId])
+  @@index([sha256])
+  @@map("evidence_items")
+}
+
+model EvidenceEvent {
+  id           String            @id @default(uuid())
+  evidenceId   String
+  type         EvidenceEventType
+  actorUserId  String?
+  detail       String?
+  createdAt    DateTime          @default(now())
+
+  evidence EvidenceItem @relation(fields: [evidenceId], references: [id])
+
+  @@index([evidenceId])
+  @@map("evidence_events")
+}
+
+// ----------------------------------------------------------------------------
+// Línea de tiempo
+// ----------------------------------------------------------------------------
+
+model TimelineEvent {
+  id             String            @id @default(uuid())
+  organizationId String
+  caseId         String
+  title          String
+  description    String?
+  occurredAt     DateTime?
+  precision      TimelinePrecision @default(EXACT)
+  kind           TimelineKind      @default(FACT)
+  sourceId       String?
+  evidenceId     String?
+  createdAt      DateTime          @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([caseId, occurredAt])
+  @@map("timeline_events")
+}
+
+// ----------------------------------------------------------------------------
+// IA asistida
+// ----------------------------------------------------------------------------
+
+model AiRun {
+  id             String   @id @default(uuid())
+  organizationId String
+  caseId         String
+  provider       String
+  model          String
+  promptVersion  String
+  operation      String // summarize, analyze, extract, timeline...
+  inputDocs      Json     @default("[]") // referencias a documentos usados
+  requestedBy    String?
+  warnings       String?
+  status         String   @default("queued") // queued, running, done, error
+  createdAt      DateTime @default(now())
+  finishedAt     DateTime?
+
+  case    Case       @relation(fields: [caseId], references: [id])
+  outputs AiOutput[]
+
+  @@index([caseId])
+  @@map("ai_runs")
+}
+
+model AiOutput {
+  id           String         @id @default(uuid())
+  aiRunId      String
+  content      String
+  isDraft      Boolean        @default(true) // borradores claramente marcados
+  reviewStatus AiReviewStatus @default(PENDING_HUMAN_REVIEW)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+
+  aiRun AiRun @relation(fields: [aiRunId], references: [id])
+
+  @@index([aiRunId])
+  @@map("ai_outputs")
+}
+
+// ----------------------------------------------------------------------------
+// Informes
+// ----------------------------------------------------------------------------
+
+model Report {
+  id             String       @id @default(uuid())
+  organizationId String
+  caseId         String
+  type           ReportType
+  title          String
+  status         ReviewStatus @default(DRAFT)
+  createdByUser  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  case       Case            @relation(fields: [caseId], references: [id])
+  versions   ReportVersion[]
+  deliveries Delivery[]
+
+  @@index([caseId])
+  @@map("reports")
+}
+
+model ReportVersion {
+  id            String          @id @default(uuid())
+  reportId      String
+  version       Int
+  pdfStorageKey String?
+  changeNote    String?
+  createdByUser String?
+  createdAt     DateTime        @default(now())
+
+  report   Report          @relation(fields: [reportId], references: [id])
+  sections ReportSection[]
+
+  @@unique([reportId, version])
+  @@map("report_versions")
+}
+
+model ReportSection {
+  id              String   @id @default(uuid())
+  reportVersionId String
+  order           Int
+  heading         String
+  body            String?
+  kind            String   @default("narrative") // narrative, facts, findings, timeline, annex
+  createdAt       DateTime @default(now())
+
+  reportVersion ReportVersion @relation(fields: [reportVersionId], references: [id])
+
+  @@index([reportVersionId])
+  @@map("report_sections")
+}
+
+// ----------------------------------------------------------------------------
+// Entrega controlada
+// ----------------------------------------------------------------------------
+
+model Delivery {
+  id             String         @id @default(uuid())
+  organizationId String
+  caseId         String
+  reportId       String?
+  status         DeliveryStatus @default(PREPARED)
+  requireMfa     Boolean        @default(false)
+  watermark      String?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdByUser  String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  report Report?          @relation(fields: [reportId], references: [id])
+  access DeliveryAccess[]
+
+  @@index([caseId])
+  @@map("deliveries")
+}
+
+model DeliveryAccess {
+  id          String    @id @default(uuid())
+  deliveryId  String
+  token       String    @unique // enlace con expiración
+  recipient   String?
+  viewedAt    DateTime?
+  downloadedAt DateTime?
+  acknowledgedAt DateTime?
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([deliveryId])
+  @@map("delivery_access")
+}
+
+// ----------------------------------------------------------------------------
+// Comunicaciones
+// ----------------------------------------------------------------------------
+
+model Message {
+  id             String   @id @default(uuid())
+  organizationId String
+  caseId         String
+  authorUserId   String?
+  audience       String   @default("internal") // internal | client
+  body           String
+  createdAt      DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([caseId, audience])
+  @@map("messages")
+}
+
+model RequestForInformation {
+  id             String    @id @default(uuid())
+  organizationId String
+  caseId         String
+  title          String
+  detail         String?
+  status         String    @default("open") // open, answered, closed
+  requestedByUser String?
+  answeredAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@map("requests_for_information")
+}
+
+// ----------------------------------------------------------------------------
+// Facturación operativa (módulo de pagos desacoplado)
+// ----------------------------------------------------------------------------
+
+model Budget {
+  id             String        @id @default(uuid())
+  organizationId String
+  caseId         String
+  amount         Decimal       @db.Decimal(14, 2)
+  currency       String        @default("USD")
+  depositAmount  Decimal?      @db.Decimal(14, 2)
+  paymentStatus  PaymentStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@map("budgets")
+}
+
+model TimeEntry {
+  id             String   @id @default(uuid())
+  organizationId String
+  caseId         String
+  taskId         String?
+  userId         String?
+  hours          Decimal  @db.Decimal(6, 2)
+  note           String?
+  workedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  case Case  @relation(fields: [caseId], references: [id])
+  task Task? @relation(fields: [taskId], references: [id])
+
+  @@index([caseId])
+  @@map("time_entries")
+}
+
+model Expense {
+  id             String   @id @default(uuid())
+  organizationId String
+  caseId         String
+  description    String
+  amount         Decimal  @db.Decimal(14, 2)
+  currency       String   @default("USD")
+  authorized     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@map("expenses")
+}
+
+// ----------------------------------------------------------------------------
+// Notificaciones, plantillas, catálogos
+// ----------------------------------------------------------------------------
+
+model Notification {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String?
+  kind           String
+  title          String
+  body           String?
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Template {
+  id             String   @id @default(uuid())
+  organizationId String
+  kind           String // report, email, checklist
+  name           String
+  content        Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("templates")
+}
+
+// ----------------------------------------------------------------------------
+// Auditoría y retención
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String?
+  actorUserId    String?
+  action         String // p. ej. case.open, evidence.download, delivery.revoke
+  resourceType   String
+  resourceId     String?
+  metadata       Json     @default("{}")
+  ipHash         String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
+
+model RetentionPolicy {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  retainDays     Int
+  actionOnExpiry RetentionAction @default(REVIEW)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  cases        Case[]
+
+  @@index([organizationId])
+  @@map("retention_policies")
+}
+
+model DeletionRequest {
+  id             String    @id @default(uuid())
+  organizationId String
+  resourceType   String
+  resourceId     String
+  reason         String?
+  requestedBy    String?
+  approvedBy     String?
+  status         String    @default("pending") // pending, approved, executed, rejected
+  executedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+  @@map("deletion_requests")
+}
+
+// ----------------------------------------------------------------------------
+// Sitio público: solicitudes de evaluación
+// ----------------------------------------------------------------------------
+
+model Inquiry {
+  id                 String         @id @default(uuid())
+  organizationId     String?
+  name               String
+  organizationName   String?
+  email              String
+  phone              String?
+  serviceType        String
+  country            String?
+  region             String?
+  summary            String
+  urgency            InquiryUrgency @default(NORMAL)
+  relationship       String? // relación del solicitante con el asunto
+  authorizationConfirmed Boolean    @default(false)
+  contactConsent     Boolean        @default(false)
+  status             InquiryStatus  @default(RECEIVED)
+  sourceIpHash       String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("inquiries")
+}

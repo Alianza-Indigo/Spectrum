@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   SPECTRUM — tokens de tema
+   Panel oscuro como experiencia principal; modo claro opcional (data-theme).
+   Los valores son canales RGB para poder usar <alpha-value> en Tailwind.
+   ========================================================================== */
+:root {
+  /* Tipografía sans serif moderna, sin dependencia de red en build. */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root,
+[data-theme="dark"] {
+  --spx-base: 9 11 18;            /* grafito / azul noche */
+  --spx-surface: 15 18 28;
+  --spx-surface-raised: 21 25 38;
+  --spx-border: 46 52 74;
+  --spx-foreground: 232 235 243;
+  --spx-muted: 148 156 178;
+
+  --spx-indigo: 99 102 241;
+  --spx-violet: 139 92 246;
+  --spx-cyan: 34 211 238;
+  --spx-magenta: 232 62 168;
+
+  --spx-success: 52 199 129;
+  --spx-warning: 234 179 8;
+  --spx-danger: 239 83 80;
+  --spx-info: 56 176 234;
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --spx-base: 245 247 251;
+  --spx-surface: 255 255 255;
+  --spx-surface-raised: 248 250 253;
+  --spx-border: 214 220 231;
+  --spx-foreground: 20 24 34;
+  --spx-muted: 92 102 122;
+
+  --spx-indigo: 79 70 229;
+  --spx-violet: 124 58 237;
+  --spx-cyan: 8 145 178;
+  --spx-magenta: 190 24 130;
+
+  color-scheme: light;
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--spx-border) / 1);
+  }
+
+  body {
+    background-color: rgb(var(--spx-base));
+    color: rgb(var(--spx-foreground));
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(var(--spx-violet) / 0.35);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--spx-cyan));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Tarjeta translúcida con contraste accesible. */
+  .spx-card {
+    @apply rounded-2xl border border-border/70 bg-surface/70 backdrop-blur-xl;
+  }
+
+  /* Línea espectral (índigo → violeta → cyan → magenta). */
+  .spx-hairline {
+    height: 1px;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--spx-indigo)),
+      rgb(var(--spx-violet)),
+      rgb(var(--spx-cyan)),
+      rgb(var(--spx-magenta)),
+      transparent
+    );
+  }
+
+  .spx-gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--spx-foreground)),
+      rgb(var(--spx-cyan)),
+      rgb(var(--spx-violet))
+    );
+  }
+}
+
+/* Modo de bajo estímulo visual / accesibilidad: desactiva microanimaciones. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+[data-motion="reduced"] .spx-animated {
+  animation: none !important;
+}
