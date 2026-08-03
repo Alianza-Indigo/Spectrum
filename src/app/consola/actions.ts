@@ -40,15 +40,7 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
     // iniciar el sistema aunque el build no haya podido ejecutar el seed.
     const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
     const configuredAdminPassword = process.env.ADMIN_PASSWORD;
-    if (configuredAdminEmail === email && configuredAdminPassword === password && user) {
-      const isAdmin = user.memberships.some((membership) => membership.role === PrismaRole.ADMIN);
-      if (isAdmin && !verifyPassword(password, user.passwordHash)) {
-        await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(password) } });
-        user = { ...user, passwordHash: hashPassword(password) };
-      }
-    }
-
-    if (!user && configuredAdminEmail === email && configuredAdminPassword === password) {
+    if (configuredAdminEmail === email && configuredAdminPassword === password) {
       const organization = await prisma.organization.upsert({
         where: { slug: "spectrum-demo" },
         update: {},
@@ -59,20 +51,19 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
           timezone: "America/Mexico_City",
         },
       });
-      const created = await prisma.user.create({
-        data: {
-          email,
-          name: "Administración",
-          organizationId: organization.id,
-          isActive: true,
-          passwordHash: hashPassword(password),
-        },
+      const adminPasswordHash = hashPassword(password);
+      const admin = await prisma.user.upsert({
+        where: { email },
+        update: { passwordHash: adminPasswordHash, isActive: true, organizationId: organization.id },
+        create: { email, name: "Administración", organizationId: organization.id, isActive: true, passwordHash: adminPasswordHash },
       });
-      await prisma.organizationMember.create({
-        data: { organizationId: organization.id, userId: created.id, role: PrismaRole.ADMIN },
+      await prisma.organizationMember.upsert({
+        where: { organizationId_userId_role: { organizationId: organization.id, userId: admin.id, role: PrismaRole.ADMIN } },
+        update: { status: "ACTIVE" },
+        create: { organizationId: organization.id, userId: admin.id, role: PrismaRole.ADMIN, status: "ACTIVE" },
       });
       user = await prisma.user.findUnique({
-        where: { id: created.id },
+        where: { id: admin.id },
         include: { memberships: { where: { status: "ACTIVE" } } },
       });
     }
