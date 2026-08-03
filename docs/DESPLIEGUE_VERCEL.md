@@ -59,23 +59,27 @@ npm run db:seed
 Los endpoints `/api/jobs/*` están implementados (idempotentes y protegidos con
 `CRON_SECRET`). Declara su calendario en `vercel.json`:
 
+Configurados para ejecutarse **una vez al día** (escalonados; compatible con el
+plan Hobby de Vercel):
+
 ```json
 {
   "crons": [
-    { "path": "/api/jobs/hash-uploaded-evidence", "schedule": "*/5 * * * *" },
-    { "path": "/api/jobs/process-ai-jobs", "schedule": "*/5 * * * *" },
-    { "path": "/api/jobs/release-stuck-jobs", "schedule": "*/15 * * * *" },
-    { "path": "/api/jobs/expire-delivery-links", "schedule": "0 * * * *" },
-    { "path": "/api/jobs/send-notifications", "schedule": "0 * * * *" },
+    { "path": "/api/jobs/hash-uploaded-evidence", "schedule": "0 2 * * *" },
+    { "path": "/api/jobs/process-ai-jobs", "schedule": "10 2 * * *" },
+    { "path": "/api/jobs/release-stuck-jobs", "schedule": "20 2 * * *" },
+    { "path": "/api/jobs/expire-delivery-links", "schedule": "30 2 * * *" },
+    { "path": "/api/jobs/send-notifications", "schedule": "40 2 * * *" },
     { "path": "/api/jobs/retention-review", "schedule": "0 3 * * *" },
-    { "path": "/api/jobs/generate-report-pdf", "schedule": "0 3 * * *" },
-    { "path": "/api/jobs/backup-audit-export", "schedule": "0 4 * * *" }
+    { "path": "/api/jobs/generate-report-pdf", "schedule": "10 3 * * *" },
+    { "path": "/api/jobs/backup-audit-export", "schedule": "20 3 * * *" }
   ]
 }
 ```
 
-Vercel Cron envía automáticamente `Authorization: Bearer $CRON_SECRET`; los jobs
-también aceptan `?secret=` para pruebas manuales.
+Los horarios son UTC. Vercel Cron envía automáticamente
+`Authorization: Bearer $CRON_SECRET`; los jobs también aceptan `?secret=` para
+pruebas manuales.
 
 ## 6. Verificación post-despliegue
 
