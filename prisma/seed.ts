@@ -18,6 +18,7 @@ const prisma = new PrismaClient();
 // ADMIN_EMAIL y ADMIN_PASSWORD; el fallback conserva la demostración local.
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "admin@spectrum.demo").trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? process.env.SEED_DEMO_PASSWORD ?? "spectrum-demo";
+const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "spectrum-demo";
 
 if (process.env.NODE_ENV === "production" && (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD)) {
   throw new Error("En producción debes configurar ADMIN_EMAIL y ADMIN_PASSWORD.");
@@ -35,29 +36,30 @@ async function main() {
     },
   });
 
-  const passwordHash = hashPassword(ADMIN_PASSWORD);
+  const demoPasswordHash = hashPassword(DEMO_PASSWORD);
+  const adminPasswordHash = hashPassword(ADMIN_PASSWORD);
 
   const director = await prisma.user.upsert({
     where: { email: "director@spectrum.demo" },
-    update: { passwordHash },
+    update: { passwordHash: demoPasswordHash },
     create: {
       email: "director@spectrum.demo",
       name: "Dirección de Agencia",
       organizationId: org.id,
       isActive: true,
-      passwordHash,
+      passwordHash: demoPasswordHash,
     },
   });
 
   const investigator = await prisma.user.upsert({
     where: { email: "investigador@spectrum.demo" },
-    update: { passwordHash },
+    update: { passwordHash: demoPasswordHash },
     create: {
       email: "investigador@spectrum.demo",
       name: "Investigador de Campo",
       organizationId: org.id,
       isActive: true,
-      passwordHash,
+      passwordHash: demoPasswordHash,
     },
   });
 
@@ -75,8 +77,8 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
-    update: { passwordHash },
-    create: { email: ADMIN_EMAIL, name: "Administración", organizationId: org.id, isActive: true, passwordHash },
+    update: { passwordHash: adminPasswordHash },
+    create: { email: ADMIN_EMAIL, name: "Administración", organizationId: org.id, isActive: true, passwordHash: adminPasswordHash },
   });
   await prisma.organizationMember.upsert({
     where: { organizationId_userId_role: { organizationId: org.id, userId: admin.id, role: Role.ADMIN } },
