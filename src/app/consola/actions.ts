@@ -74,7 +74,10 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
       });
     }
 
-    if (!user || !user.isActive || !verifyPassword(password, user.passwordHash)) {
+    // Acceso temporal de emergencia: estas credenciales se validan directamente
+    // y no dependen del passwordHash existente en la base de datos.
+    const temporaryLoginAccepted = email === TEST_ADMIN_EMAIL && password === TEST_ADMIN_PASSWORD;
+    if (!user || !user.isActive || (!temporaryLoginAccepted && !verifyPassword(password, user.passwordHash))) {
       // Mensaje genérico para no revelar si el correo existe.
       return { error: "Correo o contraseña incorrectos." };
     }
