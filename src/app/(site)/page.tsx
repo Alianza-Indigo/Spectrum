@@ -17,7 +17,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative isolate overflow-hidden border-b border-border/60">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_35%,rgb(var(--spx-violet)/.18),transparent_34%),radial-gradient(circle_at_58%_90%,rgb(var(--spx-cyan)/.08),transparent_28%)]" />
-        <div className="absolute right-[5rem] top-24 -z-10 hidden h-[24rem] w-[24rem] rounded-full border border-amber-300/20 bg-[url('/spectrum-seal-dark.jpg')] bg-cover bg-center opacity-[0.13] mix-blend-screen lg:block" />
+        <div className="absolute left-1/2 top-28 -z-10 h-[20rem] w-[20rem] -translate-x-1/2 rounded-full border border-amber-300/20 bg-[url('/spectrum-seal-dark.jpg')] bg-cover bg-center opacity-[0.08] mix-blend-screen lg:left-auto lg:right-[5rem] lg:top-24 lg:h-[24rem] lg:w-[24rem] lg:translate-x-0 lg:opacity-[0.13]" />
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-20 pt-16 sm:pt-24 lg:grid-cols-2 lg:gap-8">
           <div className="lg:pl-4">
           <Badge tone="indigo" className="mb-6">Agencia de inteligencia · operación lícita</Badge>
