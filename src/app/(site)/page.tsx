@@ -3,7 +3,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ServiceIcon } from "@/components/site/service-icon";
 import { site, services, process, sectors, faqs } from "@/config/site";
-import { ShieldCheck, GitBranch, Fingerprint, ArrowRight } from "lucide-react";
+import { ShieldCheck, GitBranch, Fingerprint, ArrowRight, Search, FileText, Crosshair, CheckCircle2 } from "lucide-react";
 
 const indicators = [
   { icon: ShieldCheck, label: "Discreción", detail: "Confidencialidad por diseño y control de accesos por rol." },
@@ -15,11 +15,14 @@ export default function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-5 pb-20 pt-20 sm:pt-28">
-        <div className="max-w-3xl">
+      <section className="relative isolate overflow-hidden border-b border-border/60">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_35%,rgb(var(--spx-violet)/.18),transparent_34%),radial-gradient(circle_at_58%_90%,rgb(var(--spx-cyan)/.08),transparent_28%)]" />
+        <div className="absolute right-[-8rem] top-12 -z-10 h-[34rem] w-[34rem] rounded-full border border-amber-300/20 bg-[url('/spectrum-seal-dark.jpg')] bg-cover bg-center opacity-25 mix-blend-screen" />
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-16 sm:pt-24 lg:grid-cols-[1.05fr_.95fr]">
+          <div>
           <Badge tone="indigo" className="mb-6">Agencia de inteligencia · operación lícita</Badge>
-          <h1 className="text-4xl font-semibold leading-[1.1] sm:text-6xl">
-            <span className="spx-gradient-text">{site.tagline}</span>
+          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.04] sm:text-6xl lg:text-7xl">
+            <span className="spx-gradient-text">Inteligencia que convierte la incertidumbre en claridad.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
             {site.description}
@@ -29,14 +32,24 @@ export default function HomePage() {
               Solicitar evaluación confidencial
               <ArrowRight className="h-4 w-4" aria-hidden />
             </ButtonLink>
-            <ButtonLink href="/servicios" size="lg" variant="outline">
-              Conocer nuestros servicios
+            <ButtonLink href="/metodologia" size="lg" variant="outline">
+              Conocer nuestra metodología
             </ButtonLink>
+          </div>
+          </div>
+          <div className="relative hidden min-h-[25rem] lg:block">
+            <div className="absolute inset-8 rounded-full border border-indigo/40 shadow-[0_0_90px_rgb(var(--spx-violet)/.2)]" />
+            <div className="absolute inset-20 rounded-full border border-cyan/40" />
+            <div className="absolute inset-[7.5rem] rounded-full border border-violet/60 bg-violet/10" />
+            <Crosshair className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 text-cyan/80" strokeWidth={1} />
+            <div className="spx-card absolute left-0 top-16 p-4 text-xs"><FileText className="mb-2 h-5 w-5 text-cyan" />Fuentes abiertas<br /><span className="text-muted">verificadas</span></div>
+            <div className="spx-card absolute right-0 top-28 p-4 text-xs"><Search className="mb-2 h-5 w-5 text-violet" />Análisis<br /><span className="text-muted">de evidencia</span></div>
+            <div className="spx-card absolute bottom-10 left-1/2 -translate-x-1/2 p-4 text-xs"><CheckCircle2 className="mb-2 h-5 w-5 text-amber-300" />Informe auditable</div>
           </div>
         </div>
 
         {/* Indicadores */}
-        <div className="mt-16 grid gap-4 sm:grid-cols-3">
+        <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-10 sm:grid-cols-3">
           {indicators.map((it) => (
             <Card key={it.label} className="p-5">
               <it.icon className="h-6 w-6 text-cyan" aria-hidden />
@@ -52,7 +65,8 @@ export default function HomePage() {
       {/* Servicios destacados */}
       <section id="servicios" className="mx-auto max-w-6xl px-5 py-20">
         <div className="mb-10 max-w-2xl">
-          <h2 className="text-3xl font-semibold">Servicios</h2>
+          <Badge tone="neutral" className="mb-4">Capacidades SPECTRUM</Badge>
+          <h2 className="text-3xl font-semibold sm:text-4xl">Investigación con método. Información para decidir.</h2>
           <p className="mt-3 text-muted">
             Capacidades de inteligencia corporativa y análisis documental, ejecutadas con
             métodos permitidos y fuentes autorizadas.
@@ -71,6 +85,19 @@ export default function HomePage() {
           <ButtonLink href="/servicios" variant="secondary" size="sm">
             Ver todos los servicios <ArrowRight className="h-4 w-4" aria-hidden />
           </ButtonLink>
+        </div>
+      </section>
+
+      <section className="border-y border-border/60 bg-surface/30">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 lg:grid-cols-[.8fr_1.2fr]">
+          <div>
+            <Badge tone="indigo" className="mb-4">Investigadores privados</Badge>
+            <h2 className="text-3xl font-semibold sm:text-4xl">Lo que importa no es cuánto se investiga, sino cuánto puede sostenerse.</h2>
+            <p className="mt-4 leading-relaxed text-muted">Cada encargo se delimita, documenta y analiza con separación entre hechos, declaraciones, inferencias y conclusiones.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {["Información obtenida lícitamente", "Cadena de custodia documentada", "Revisión humana de cada hallazgo", "Entrega controlada y confidencial"].map((item) => <Card key={item} className="flex items-center gap-3 p-5"><CheckCircle2 className="h-5 w-5 shrink-0 text-amber-300" /><span className="text-sm">{item}</span></Card>)}
+          </div>
         </div>
       </section>
 

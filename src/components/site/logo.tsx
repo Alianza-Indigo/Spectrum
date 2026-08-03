@@ -4,21 +4,19 @@ import { cn } from "@/lib/utils";
 import { site } from "@/config/site";
 
 /**
- * Marca oficial SPECTRUM (huella dactilar + wordmark). El arte original usa
- * texto oscuro, por lo que sobre superficies oscuras se coloca en un lockup
- * claro para preservar la legibilidad y el contraste accesible.
+ * Lockup oficial horizontal de SPECTRUM.
  */
 export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
   return (
     <Link href={href} className={cn("inline-flex items-center", className)} aria-label={site.fullName}>
-      <span className="inline-flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-sm ring-1 ring-black/5">
+      <span className="inline-flex items-center rounded-md bg-white px-2 py-1 shadow-sm ring-1 ring-amber-200/30">
         <Image
-          src="/spectrum-logo.png"
+          src="/spectrum-wordmark.jpg"
           alt={site.fullName}
-          width={132}
-          height={44}
+          width={330}
+          height={94}
           priority
-          className="h-8 w-auto"
+          className="h-10 w-auto object-contain"
         />
       </span>
     </Link>
