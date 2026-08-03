@@ -3,8 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { verifyPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { signSession, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth/session";
 import type { Role } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
@@ -30,10 +31,43 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
 
   let destination = "/consola/panel";
   try {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email },
       include: { memberships: { where: { status: "ACTIVE" } } },
     });
+
+    // Bootstrap de emergencia para el primer administrador en Vercel. Permite
+    // iniciar el sistema aunque el build no haya podido ejecutar el seed.
+    const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    const configuredAdminPassword = process.env.ADMIN_PASSWORD;
+    if (!user && configuredAdminEmail === email && configuredAdminPassword === password) {
+      const organization = await prisma.organization.upsert({
+        where: { slug: "spectrum-demo" },
+        update: {},
+        create: {
+          name: "SPECTRUM Agencia de Inteligencia",
+          slug: "spectrum-demo",
+          legalName: "SPECTRUM Agencia de Inteligencia",
+          timezone: "America/Mexico_City",
+        },
+      });
+      const created = await prisma.user.create({
+        data: {
+          email,
+          name: "Administración",
+          organizationId: organization.id,
+          isActive: true,
+          passwordHash: hashPassword(password),
+        },
+      });
+      await prisma.organizationMember.create({
+        data: { organizationId: organization.id, userId: created.id, role: Role.ADMIN },
+      });
+      user = await prisma.user.findUnique({
+        where: { id: created.id },
+        include: { memberships: { where: { status: "ACTIVE" } } },
+      });
+    }
 
     if (!user || !user.isActive || !verifyPassword(password, user.passwordHash)) {
       // Mensaje genérico para no revelar si el correo existe.
