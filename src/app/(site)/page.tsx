@@ -128,3 +128,47 @@ export default function HomePage() {
       <section id="sectores" className="mx-auto max-w-6xl px-5 py-20">
         <div className="mb-10 max-w-2xl">
           <h2 className="text-3xl font-semibold">Sectores atendidos</h2>
+          <p className="mt-3 text-muted">Acompañamos a organizaciones y particulares que requieren decisiones informadas.</p>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          {sectors.map((sector) => (
+            <Badge key={sector} tone="neutral" className="px-3 py-1.5 text-sm">
+              {sector}
+            </Badge>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="border-t border-border/60 bg-surface/30">
+        <div className="mx-auto max-w-3xl px-5 py-20">
+          <h2 className="text-3xl font-semibold">Preguntas frecuentes</h2>
+          <div className="mt-8 divide-y divide-border/60">
+            {faqs.map((f) => (
+              <details key={f.q} className="group py-5">
+                <summary className="flex cursor-pointer items-center justify-between gap-4 text-base font-medium text-foreground marker:content-['']">
+                  {f.q}
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-90" aria-hidden />
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA + aviso legal */}
+      <section className="mx-auto max-w-6xl px-5 py-20">
+        <Card className="flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-xl">
+            <h2 className="text-2xl font-semibold">¿Necesitas claridad sobre un asunto sensible?</h2>
+            <p className="mt-2 text-sm text-muted">{site.legalNotice}</p>
+          </div>
+          <ButtonLink href="/solicitud" size="lg" className="shrink-0">
+            Solicitar evaluación confidencial
+          </ButtonLink>
+        </Card>
+      </section>
+    </>
+  );
+}
