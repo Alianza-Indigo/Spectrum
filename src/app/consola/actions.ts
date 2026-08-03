@@ -25,7 +25,8 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
   });
   if (!parsed.success) return { error: "Credenciales no válidas." };
 
-  const { email, password, next } = parsed.data;
+  const { password, next } = parsed.data;
+  const email = parsed.data.email.toLowerCase();
 
   let destination = "/consola/panel";
   try {

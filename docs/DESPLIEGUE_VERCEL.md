@@ -23,6 +23,8 @@ AUTH_SECRET=            # openssl rand -base64 32
 DATABASE_URL=           # postgres serverless con sslmode=require
 ENCRYPTION_KEY=         # openssl rand -base64 32
 CRON_SECRET=            # protege los endpoints de jobs
+ADMIN_EMAIL=            # correo del administrador inicial
+ADMIN_PASSWORD=         # contraseña del administrador inicial
 ```
 
 Añade las de almacenamiento, correo e IA cuando actives esos módulos.
@@ -33,7 +35,7 @@ Vercel usa por defecto:
 
 ```
 Install:  npm install
-Build:    npm run build        # ejecuta `prisma generate` + `next build`
+  Build:    npm run build        # migra, crea/actualiza admin inicial y compila
 ```
 
 No se requiere configuración especial: el `build` genera el cliente de Prisma.
