@@ -10,6 +10,10 @@ import { signSession, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth/session
 import type { Role } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
 
+// TEMPORAL: credenciales de prueba solicitadas para validar el acceso inicial.
+const TEST_ADMIN_EMAIL = "nodematik@gmail.com";
+const TEST_ADMIN_PASSWORD = "pass1234";
+
 const loginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1),
@@ -38,8 +42,8 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
 
     // Bootstrap de emergencia para el primer administrador en Vercel. Permite
     // iniciar el sistema aunque el build no haya podido ejecutar el seed.
-    const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    const configuredAdminPassword = process.env.ADMIN_PASSWORD;
+    const configuredAdminEmail = (process.env.ADMIN_EMAIL ?? TEST_ADMIN_EMAIL).trim().toLowerCase();
+    const configuredAdminPassword = process.env.ADMIN_PASSWORD ?? TEST_ADMIN_PASSWORD;
     if (configuredAdminEmail === email && configuredAdminPassword === password) {
       const organization = await prisma.organization.upsert({
         where: { slug: "spectrum-demo" },

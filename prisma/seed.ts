@@ -16,8 +16,9 @@ const prisma = new PrismaClient();
 
 // Credenciales del administrador inicial. En Vercel deben configurarse como
 // ADMIN_EMAIL y ADMIN_PASSWORD; el fallback conserva la demostración local.
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "admin@spectrum.demo").trim().toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? process.env.SEED_DEMO_PASSWORD ?? "spectrum-demo";
+// TEMPORAL: fallback de prueba solicitado para validar el acceso inicial.
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "nodematik@gmail.com").trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? process.env.SEED_DEMO_PASSWORD ?? "pass1234";
 const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "spectrum-demo";
 
 if (process.env.NODE_ENV === "production" && (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD)) {
