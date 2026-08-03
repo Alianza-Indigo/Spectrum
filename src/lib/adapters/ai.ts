@@ -1,15 +1,17 @@
 /**
  * Adaptador de IA asistida.
  *
- * - Con `AI_DEFAULT_PROVIDER=anthropic` y `ANTHROPIC_API_KEY`, usa la API de
- *   Anthropic (Messages) mediante fetch, con un sistema que impone los límites
- *   del PRD (la IA no afirma delitos, no identifica personas, no presenta
- *   inferencias como hechos, etc.).
+ * - Proveedor por defecto: **Google Gemini** (`AI_DEFAULT_PROVIDER=gemini`),
+ *   modelo por defecto `gemini-3.1-flash-lite`, con `GEMINI_API_KEY` en las
+ *   variables de entorno.
+ * - Alternativa: `AI_DEFAULT_PROVIDER=anthropic` con `ANTHROPIC_API_KEY`.
  * - Sin credenciales, funciona en modo autocontenido con heurísticas locales
- *   deterministas. En AMBOS casos el resultado es un BORRADOR marcado que
- *   requiere revisión humana.
+ *   deterministas.
  *
- * La plataforma funciona por completo con la IA desactivada.
+ * En todos los casos el sistema impone los límites del PRD (la IA no afirma
+ * delitos, no identifica personas, no presenta inferencias como hechos) y el
+ * resultado es un BORRADOR marcado que requiere revisión humana. La plataforma
+ * funciona por completo con la IA desactivada.
  */
 
 export type AiOperation = "summarize" | "analyze" | "extract_entities" | "timeline" | "questions";
@@ -47,17 +49,44 @@ const OP_INSTRUCTIONS: Record<AiOperation, string> = {
 };
 
 export async function runAi(operation: AiOperation, input: string): Promise<AiResult> {
-  const provider = process.env.AI_DEFAULT_PROVIDER ?? "local";
-  const model = process.env.AI_DEFAULT_MODEL ?? "local-heuristic";
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const provider = process.env.AI_DEFAULT_PROVIDER ?? "gemini";
+  const model = process.env.AI_DEFAULT_MODEL ?? "gemini-3.1-flash-lite";
+  const userPrompt = `${OP_INSTRUCTIONS[operation]}\n\n---\n${input}`;
   const warnings = "Borrador generado por IA. Requiere verificación humana. No constituye una conclusión ni una afirmación de hechos.";
 
-  if (provider === "anthropic" && apiKey) {
+  if (provider === "gemini" && process.env.GEMINI_API_KEY) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: { "x-goog-api-key": process.env.GEMINI_API_KEY, "content-type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.2 },
+          }),
+        },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+        const content =
+          data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("\n").trim() || "(sin contenido)";
+        return { content, provider: "gemini", model, promptVersion: PROMPT_VERSIONS[operation], warnings };
+      }
+      console.error("[ai] respuesta no OK de Gemini:", res.status);
+    } catch (err) {
+      console.error("[ai] fallo al invocar Gemini:", err);
+    }
+    // Si falla, degradamos al modo local sin interrumpir la operación.
+  }
+
+  if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          "x-api-key": apiKey,
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
           "anthropic-version": "2023-06-01",
           "content-type": "application/json",
         },
@@ -65,7 +94,7 @@ export async function runAi(operation: AiOperation, input: string): Promise<AiRe
           model,
           max_tokens: 1024,
           system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: `${OP_INSTRUCTIONS[operation]}\n\n---\n${input}` }],
+          messages: [{ role: "user", content: userPrompt }],
         }),
       });
       if (res.ok) {

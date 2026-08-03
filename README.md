@@ -45,7 +45,8 @@ informes en PDF, entrega controlada, API REST, jobs y auditoría.
 - **Inteligencia**: fuentes y hallazgos con invariante hecho↔fuente, línea de
   tiempo, y **evidencia con hash SHA-256, cadena de custodia y descarga privada
   firmada**.
-- **IA asistida** con proveedor Anthropic o modo local autocontenido; toda
+- **IA asistida** con Google Gemini (`gemini-3.1-flash-lite`), Anthropic o modo
+  local autocontenido; toda
   salida es un borrador con **revisión humana obligatoria** y registro auditable.
 - **Informes en PDF** (pdf-lib) que diferencian hechos/inferencias/conclusiones,
   con versiones y flujo de revisión; **entrega controlada** por enlace expirable
@@ -61,7 +62,7 @@ informes en PDF, entrega controlada, API REST, jobs y auditoría.
 
 > **Servicios externos:** almacenamiento, correo e IA usan adaptadores con un
 > modo por defecto **autocontenido y funcional** (sin credenciales). Al
-> configurar `STORAGE_*`, `EMAIL_*` o `ANTHROPIC_API_KEY` se conmutan a los
+> configurar `STORAGE_*`, `EMAIL_*` o `GEMINI_API_KEY` se conmutan a los
 > proveedores externos sin cambios de código.
 
 ---

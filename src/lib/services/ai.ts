@@ -24,8 +24,8 @@ export async function runCaseAi(
     data: {
       organizationId: current.organizationId,
       caseId,
-      provider: process.env.AI_DEFAULT_PROVIDER ?? "local",
-      model: process.env.AI_DEFAULT_MODEL ?? "local-heuristic",
+      provider: process.env.AI_DEFAULT_PROVIDER ?? "gemini",
+      model: process.env.AI_DEFAULT_MODEL ?? "gemini-3.1-flash-lite",
       promptVersion: `${operation}@pending`,
       operation,
       inputDocs,
