@@ -14,8 +14,14 @@ import { hashPassword } from "../src/lib/auth/password";
 
 const prisma = new PrismaClient();
 
-// Contraseña de demostración (solo para el entorno de ejemplo).
-const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "spectrum-demo";
+// Credenciales del administrador inicial. En Vercel deben configurarse como
+// ADMIN_EMAIL y ADMIN_PASSWORD; el fallback conserva la demostración local.
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "admin@spectrum.demo").trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? process.env.SEED_DEMO_PASSWORD ?? "spectrum-demo";
+
+if (process.env.NODE_ENV === "production" && (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD)) {
+  throw new Error("En producción debes configurar ADMIN_EMAIL y ADMIN_PASSWORD.");
+}
 
 async function main() {
   const org = await prisma.organization.upsert({
@@ -29,7 +35,7 @@ async function main() {
     },
   });
 
-  const passwordHash = hashPassword(DEMO_PASSWORD);
+  const passwordHash = hashPassword(ADMIN_PASSWORD);
 
   const director = await prisma.user.upsert({
     where: { email: "director@spectrum.demo" },
@@ -68,9 +74,9 @@ async function main() {
   });
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@spectrum.demo" },
+    where: { email: ADMIN_EMAIL },
     update: { passwordHash },
-    create: { email: "admin@spectrum.demo", name: "Administración", organizationId: org.id, isActive: true, passwordHash },
+    create: { email: ADMIN_EMAIL, name: "Administración", organizationId: org.id, isActive: true, passwordHash },
   });
   await prisma.organizationMember.upsert({
     where: { organizationId_userId_role: { organizationId: org.id, userId: admin.id, role: Role.ADMIN } },
@@ -82,7 +88,7 @@ async function main() {
   const existingCase = await prisma.case.findFirst({ where: { organizationId: org.id } });
   if (existingCase) {
     console.log("Seed: datos demo ya presentes; se omite la recreación.");
-    console.log(`Usuarios demo: director@ / investigador@ / admin@spectrum.demo (contraseña: ${DEMO_PASSWORD})`);
+    console.log(`Administrador inicial: ${ADMIN_EMAIL}`);
     return;
   }
 
@@ -249,7 +255,7 @@ async function main() {
   });
 
   console.log("Seed completado:", { org: org.slug, caso: investigation.folio });
-  console.log(`Usuarios demo: director@ / investigador@ / admin@spectrum.demo (contraseña: ${DEMO_PASSWORD})`);
+  console.log(`Administrador inicial: ${ADMIN_EMAIL}`);
 }
 
 main()
